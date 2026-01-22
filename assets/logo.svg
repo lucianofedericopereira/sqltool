@@ -1,0 +1,281 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+  <defs>
+    <!-- Vaporwave gradient background -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0f23"/>
+      <stop offset="50%" style="stop-color:#1a1a3e"/>
+      <stop offset="100%" style="stop-color:#2d1b4e"/>
+    </linearGradient>
+
+    <!-- Neon pink gradient -->
+    <linearGradient id="neonPink" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff71ce"/>
+      <stop offset="100%" style="stop-color:#ff00ff"/>
+    </linearGradient>
+
+    <!-- Neon cyan gradient -->
+    <linearGradient id="neonCyan" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#01cdfe"/>
+      <stop offset="100%" style="stop-color:#00ffff"/>
+    </linearGradient>
+
+    <!-- Sunset gradient for sun -->
+    <linearGradient id="sunset" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff9500"/>
+      <stop offset="50%" style="stop-color:#ff2a6d"/>
+      <stop offset="100%" style="stop-color:#d300c5"/>
+    </linearGradient>
+
+    <!-- Glow filter -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="200" fill="url(#bg)"/>
+
+  <!-- Grid lines (perspective) -->
+  <g stroke="#ff00ff" stroke-width="1" opacity="0.3">
+    <!-- Horizontal lines -->
+    <line x1="0" y1="140" x2="400" y2="140"/>
+    <line x1="0" y1="155" x2="400" y2="155"/>
+    <line x1="0" y1="170" x2="400" y2="170"/>
+    <line x1="0" y1="185" x2="400" y2="185"/>
+    <line x1="0" y1="200" x2="400" y2="200"/>
+
+    <!-- Vertical lines (converging) -->
+    <line x1="200" y1="130" x2="200" y2="200"/>
+    <line x1="200" y1="130" x2="0" y2="200"/>
+    <line x1="200" y1="130" x2="400" y2="200"/>
+    <line x1="200" y1="130" x2="50" y2="200"/>
+    <line x1="200" y1="130" x2="350" y2="200"/>
+    <line x1="200" y1="130" x2="100" y2="200"/>
+    <line x1="200" y1="130" x2="300" y2="200"/>
+    <line x1="200" y1="130" x2="150" y2="200"/>
+    <line x1="200" y1="130" x2="250" y2="200"/>
+  </g>
+
+  <!-- Sun (half circle) -->
+  <clipPath id="sunClip">
+    <rect x="140" y="60" width="120" height="50"/>
+  </clipPath>
+  <circle cx="200" cy="110" r="45" fill="url(#sunset)" clip-path="url(#sunClip)" opacity="0.9"/>
+
+  <!-- Sun stripes -->
+  <g clip-path="url(#sunClip)" opacity="0.8">
+    <rect x="140" y="70" width="120" height="4" fill="#0f0f23"/>
+    <rect x="140" y="80" width="120" height="5" fill="#0f0f23"/>
+    <rect x="140" y="92" width="120" height="6" fill="#0f0f23"/>
+    <rect x="140" y="105" width="120" height="8" fill="#0f0f23"/>
+  </g>
+
+  <!-- 8-bit Database icon (cylinder made of pixels) -->
+  <g filter="url(#glow)">
+    <!-- Database body - pixel style -->
+    <rect x="40" y="45" width="8" height="8" fill="#01cdfe"/>
+    <rect x="48" y="45" width="8" height="8" fill="#01cdfe"/>
+    <rect x="56" y="45" width="8" height="8" fill="#01cdfe"/>
+    <rect x="64" y="45" width="8" height="8" fill="#01cdfe"/>
+    <rect x="72" y="45" width="8" height="8" fill="#01cdfe"/>
+
+    <rect x="32" y="53" width="8" height="8" fill="#01cdfe"/>
+    <rect x="80" y="53" width="8" height="8" fill="#01cdfe"/>
+
+    <rect x="32" y="61" width="8" height="8" fill="#01cdfe"/>
+    <rect x="80" y="61" width="8" height="8" fill="#01cdfe"/>
+
+    <!-- Middle stripe -->
+    <rect x="32" y="69" width="8" height="8" fill="#ff71ce"/>
+    <rect x="40" y="69" width="8" height="8" fill="#ff71ce"/>
+    <rect x="48" y="69" width="8" height="8" fill="#ff71ce"/>
+    <rect x="56" y="69" width="8" height="8" fill="#ff71ce"/>
+    <rect x="64" y="69" width="8" height="8" fill="#ff71ce"/>
+    <rect x="72" y="69" width="8" height="8" fill="#ff71ce"/>
+    <rect x="80" y="69" width="8" height="8" fill="#ff71ce"/>
+
+    <rect x="32" y="77" width="8" height="8" fill="#01cdfe"/>
+    <rect x="80" y="77" width="8" height="8" fill="#01cdfe"/>
+
+    <rect x="32" y="85" width="8" height="8" fill="#01cdfe"/>
+    <rect x="80" y="85" width="8" height="8" fill="#01cdfe"/>
+
+    <!-- Bottom stripe -->
+    <rect x="32" y="93" width="8" height="8" fill="#ff71ce"/>
+    <rect x="40" y="93" width="8" height="8" fill="#ff71ce"/>
+    <rect x="48" y="93" width="8" height="8" fill="#ff71ce"/>
+    <rect x="56" y="93" width="8" height="8" fill="#ff71ce"/>
+    <rect x="64" y="93" width="8" height="8" fill="#ff71ce"/>
+    <rect x="72" y="93" width="8" height="8" fill="#ff71ce"/>
+    <rect x="80" y="93" width="8" height="8" fill="#ff71ce"/>
+
+    <rect x="40" y="101" width="8" height="8" fill="#01cdfe"/>
+    <rect x="48" y="101" width="8" height="8" fill="#01cdfe"/>
+    <rect x="56" y="101" width="8" height="8" fill="#01cdfe"/>
+    <rect x="64" y="101" width="8" height="8" fill="#01cdfe"/>
+    <rect x="72" y="101" width="8" height="8" fill="#01cdfe"/>
+  </g>
+
+  <!-- SQLTOOL text - 8bit pixel style -->
+  <g filter="url(#glowStrong)">
+    <!-- S -->
+    <rect x="115" y="35" width="6" height="6" fill="#ff71ce"/>
+    <rect x="121" y="35" width="6" height="6" fill="#ff71ce"/>
+    <rect x="127" y="35" width="6" height="6" fill="#ff71ce"/>
+    <rect x="109" y="41" width="6" height="6" fill="#ff71ce"/>
+    <rect x="115" y="47" width="6" height="6" fill="#ff71ce"/>
+    <rect x="121" y="47" width="6" height="6" fill="#ff71ce"/>
+    <rect x="127" y="53" width="6" height="6" fill="#ff71ce"/>
+    <rect x="109" y="59" width="6" height="6" fill="#ff71ce"/>
+    <rect x="115" y="59" width="6" height="6" fill="#ff71ce"/>
+    <rect x="121" y="59" width="6" height="6" fill="#ff71ce"/>
+
+    <!-- Q -->
+    <rect x="145" y="35" width="6" height="6" fill="#ff71ce"/>
+    <rect x="151" y="35" width="6" height="6" fill="#ff71ce"/>
+    <rect x="139" y="41" width="6" height="6" fill="#ff71ce"/>
+    <rect x="157" y="41" width="6" height="6" fill="#ff71ce"/>
+    <rect x="139" y="47" width="6" height="6" fill="#ff71ce"/>
+    <rect x="157" y="47" width="6" height="6" fill="#ff71ce"/>
+    <rect x="139" y="53" width="6" height="6" fill="#ff71ce"/>
+    <rect x="151" y="53" width="6" height="6" fill="#ff71ce"/>
+    <rect x="145" y="59" width="6" height="6" fill="#ff71ce"/>
+    <rect x="151" y="59" width="6" height="6" fill="#ff71ce"/>
+    <rect x="157" y="59" width="6" height="6" fill="#ff71ce"/>
+
+    <!-- L -->
+    <rect x="169" y="35" width="6" height="6" fill="#ff71ce"/>
+    <rect x="169" y="41" width="6" height="6" fill="#ff71ce"/>
+    <rect x="169" y="47" width="6" height="6" fill="#ff71ce"/>
+    <rect x="169" y="53" width="6" height="6" fill="#ff71ce"/>
+    <rect x="169" y="59" width="6" height="6" fill="#ff71ce"/>
+    <rect x="175" y="59" width="6" height="6" fill="#ff71ce"/>
+    <rect x="181" y="59" width="6" height="6" fill="#ff71ce"/>
+
+    <!-- T -->
+    <rect x="193" y="35" width="6" height="6" fill="#01cdfe"/>
+    <rect x="199" y="35" width="6" height="6" fill="#01cdfe"/>
+    <rect x="205" y="35" width="6" height="6" fill="#01cdfe"/>
+    <rect x="199" y="41" width="6" height="6" fill="#01cdfe"/>
+    <rect x="199" y="47" width="6" height="6" fill="#01cdfe"/>
+    <rect x="199" y="53" width="6" height="6" fill="#01cdfe"/>
+    <rect x="199" y="59" width="6" height="6" fill="#01cdfe"/>
+
+    <!-- O -->
+    <rect x="223" y="35" width="6" height="6" fill="#01cdfe"/>
+    <rect x="229" y="35" width="6" height="6" fill="#01cdfe"/>
+    <rect x="217" y="41" width="6" height="6" fill="#01cdfe"/>
+    <rect x="235" y="41" width="6" height="6" fill="#01cdfe"/>
+    <rect x="217" y="47" width="6" height="6" fill="#01cdfe"/>
+    <rect x="235" y="47" width="6" height="6" fill="#01cdfe"/>
+    <rect x="217" y="53" width="6" height="6" fill="#01cdfe"/>
+    <rect x="235" y="53" width="6" height="6" fill="#01cdfe"/>
+    <rect x="223" y="59" width="6" height="6" fill="#01cdfe"/>
+    <rect x="229" y="59" width="6" height="6" fill="#01cdfe"/>
+
+    <!-- O -->
+    <rect x="253" y="35" width="6" height="6" fill="#01cdfe"/>
+    <rect x="259" y="35" width="6" height="6" fill="#01cdfe"/>
+    <rect x="247" y="41" width="6" height="6" fill="#01cdfe"/>
+    <rect x="265" y="41" width="6" height="6" fill="#01cdfe"/>
+    <rect x="247" y="47" width="6" height="6" fill="#01cdfe"/>
+    <rect x="265" y="47" width="6" height="6" fill="#01cdfe"/>
+    <rect x="247" y="53" width="6" height="6" fill="#01cdfe"/>
+    <rect x="265" y="53" width="6" height="6" fill="#01cdfe"/>
+    <rect x="253" y="59" width="6" height="6" fill="#01cdfe"/>
+    <rect x="259" y="59" width="6" height="6" fill="#01cdfe"/>
+
+    <!-- L -->
+    <rect x="277" y="35" width="6" height="6" fill="#01cdfe"/>
+    <rect x="277" y="41" width="6" height="6" fill="#01cdfe"/>
+    <rect x="277" y="47" width="6" height="6" fill="#01cdfe"/>
+    <rect x="277" y="53" width="6" height="6" fill="#01cdfe"/>
+    <rect x="277" y="59" width="6" height="6" fill="#01cdfe"/>
+    <rect x="283" y="59" width="6" height="6" fill="#01cdfe"/>
+    <rect x="289" y="59" width="6" height="6" fill="#01cdfe"/>
+  </g>
+
+  <!-- Wrench icon (8-bit) -->
+  <g filter="url(#glow)">
+    <rect x="310" y="45" width="8" height="8" fill="#01cdfe"/>
+    <rect x="318" y="45" width="8" height="8" fill="#01cdfe"/>
+    <rect x="326" y="53" width="8" height="8" fill="#01cdfe"/>
+    <rect x="334" y="61" width="8" height="8" fill="#01cdfe"/>
+    <rect x="342" y="69" width="8" height="8" fill="#ff71ce"/>
+    <rect x="350" y="77" width="8" height="8" fill="#ff71ce"/>
+    <rect x="358" y="85" width="8" height="8" fill="#ff71ce"/>
+    <rect x="350" y="93" width="8" height="8" fill="#ff71ce"/>
+    <rect x="358" y="93" width="8" height="8" fill="#ff71ce"/>
+  </g>
+
+  <!-- Tagline -->
+  <text x="200" y="125" font-family="monospace" font-size="10" fill="#01cdfe" text-anchor="middle" filter="url(#glow)" opacity="0.9">
+    LOCAL MYSQL/MARIADB DEV
+  </text>
+
+  <!-- Scanlines effect -->
+  <g opacity="0.03">
+    <line x1="0" y1="0" x2="400" y2="0" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="4" x2="400" y2="4" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="8" x2="400" y2="8" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="12" x2="400" y2="12" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="16" x2="400" y2="16" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="20" x2="400" y2="20" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="24" x2="400" y2="24" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="28" x2="400" y2="28" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="32" x2="400" y2="32" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="36" x2="400" y2="36" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="40" x2="400" y2="40" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="44" x2="400" y2="44" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="48" x2="400" y2="48" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="52" x2="400" y2="52" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="56" x2="400" y2="56" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="60" x2="400" y2="60" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="64" x2="400" y2="64" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="68" x2="400" y2="68" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="72" x2="400" y2="72" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="76" x2="400" y2="76" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="80" x2="400" y2="80" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="84" x2="400" y2="84" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="88" x2="400" y2="88" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="92" x2="400" y2="92" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="96" x2="400" y2="96" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="100" x2="400" y2="100" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="104" x2="400" y2="104" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="108" x2="400" y2="108" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="112" x2="400" y2="112" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="116" x2="400" y2="116" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="120" x2="400" y2="120" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="124" x2="400" y2="124" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="128" x2="400" y2="128" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="132" x2="400" y2="132" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="136" x2="400" y2="136" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="140" x2="400" y2="140" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="144" x2="400" y2="144" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="148" x2="400" y2="148" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="152" x2="400" y2="152" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="156" x2="400" y2="156" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="160" x2="400" y2="160" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="164" x2="400" y2="164" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="168" x2="400" y2="168" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="172" x2="400" y2="172" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="176" x2="400" y2="176" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="180" x2="400" y2="180" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="184" x2="400" y2="184" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="188" x2="400" y2="188" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="192" x2="400" y2="192" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="196" x2="400" y2="196" stroke="#fff" stroke-width="1"/>
+  </g>
+</svg>

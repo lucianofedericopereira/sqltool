@@ -1,0 +1,705 @@
+#!/usr/bin/env perl
+# sqltool - Local MySQL/MariaDB instance manager
+# Copyright (C) 2026 Luciano Federico Pereira <lucianopereira@posteo.es>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation; either version 2.1 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+use strict;
+use warnings;
+use File::Path qw(make_path remove_tree);
+use File::Basename qw(basename);
+use POSIX qw(strftime);
+
+my $SCRIPT_NAME = basename($0);
+
+my $BASE       = $ENV{HOME} . "/sql";
+my $BIN        = "$BASE/bin";
+my $BACKUPS    = "$BASE/backups";
+my $PORT_BASE  = 3307;
+my $MYSQL_PASS = "admin1234";
+
+my ($MYSQLD, $MYSQL, $MYSQLADMIN, $MYSQLDUMP);
+
+sub ensure_dirs {
+    make_path($BASE)    unless -d $BASE;
+    make_path($BIN)     unless -d $BIN;
+    make_path($BACKUPS) unless -d $BACKUPS;
+}
+
+sub run_cmd {
+    my ($cmd) = @_;
+    system($cmd);
+    return $? == 0;
+}
+
+sub find_binary {
+    my (@names) = @_;
+
+    # Common binary locations (including those not in regular user PATH)
+    my @search_dirs = (
+        '/usr/bin',
+        '/usr/sbin',
+        '/bin',
+        '/sbin',
+        '/usr/local/bin',
+        '/usr/local/sbin',
+        '/usr/local/mysql/bin',
+        '/opt/mysql/bin',
+        '/opt/mariadb/bin',
+    );
+
+    for my $name (@names) {
+        # Check PATH first using command -v (more portable than which)
+        my $path = `command -v $name 2>/dev/null`;
+        chomp $path;
+        return $path if $path && -x $path;
+
+        # Check common locations
+        for my $dir (@search_dirs) {
+            my $full = "$dir/$name";
+            return $full if -x $full;
+        }
+    }
+    return "";
+}
+
+my $MYSQL_INSTALL_DB;
+my $IS_MARIADB = 0;
+
+sub detect_mysql_system {
+    # Server daemon: try all known names
+    # MySQL: mysqld, mysqld_safe
+    # MariaDB: mariadbd, mariadbd-safe (Debian 13+), mysqld (symlink on some distros)
+    $MYSQLD = find_binary('mariadbd', 'mysqld', 'mariadbd-safe', 'mysqld_safe');
+
+    # Client: mysql or mariadb
+    $MYSQL = find_binary('mariadb', 'mysql');
+
+    # Admin tool: mysqladmin or mariadb-admin
+    $MYSQLADMIN = find_binary('mariadb-admin', 'mysqladmin');
+
+    # Dump tool: mysqldump or mariadb-dump
+    $MYSQLDUMP = find_binary('mariadb-dump', 'mysqldump');
+
+    # Install DB tool (for MariaDB initialization)
+    $MYSQL_INSTALL_DB = find_binary('mariadb-install-db', 'mysql_install_db');
+
+    # Detect if this is MariaDB (uses different init method)
+    if ($MYSQLD) {
+        my $version = `'$MYSQLD' --version 2>/dev/null` || "";
+        $IS_MARIADB = ($version =~ /mariadb/i) ? 1 : 0;
+    }
+}
+
+sub detect_distro {
+    if (-f "/etc/os-release") {
+        open my $fh, '<', "/etc/os-release" or return "unknown";
+        while (<$fh>) {
+            if (/^ID=(.*)/) {
+                my $id = $1;
+                $id =~ s/"//g;
+                close $fh;
+                return $id;
+            }
+        }
+        close $fh;
+    }
+    return "unknown";
+}
+
+sub get_install_cmd {
+    my $distro = detect_distro();
+
+    my %commands = (
+        'debian'     => 'sudo apt update && sudo apt install -y mariadb-server mariadb-client',
+        'ubuntu'     => 'sudo apt update && sudo apt install -y mariadb-server mariadb-client',
+        'linuxmint'  => 'sudo apt update && sudo apt install -y mariadb-server mariadb-client',
+        'pop'        => 'sudo apt update && sudo apt install -y mariadb-server mariadb-client',
+        'elementary' => 'sudo apt update && sudo apt install -y mariadb-server mariadb-client',
+        'fedora'     => 'sudo dnf install -y mariadb-server mariadb',
+        'rhel'       => 'sudo dnf install -y mariadb-server mariadb',
+        'centos'     => 'sudo dnf install -y mariadb-server mariadb',
+        'rocky'      => 'sudo dnf install -y mariadb-server mariadb',
+        'alma'       => 'sudo dnf install -y mariadb-server mariadb',
+        'arch'       => 'sudo pacman -S --noconfirm mariadb',
+        'manjaro'    => 'sudo pacman -S --noconfirm mariadb',
+        'opensuse'   => 'sudo zypper install -y mariadb mariadb-client',
+        'suse'       => 'sudo zypper install -y mariadb mariadb-client',
+        'void'       => 'sudo xbps-install -y mariadb',
+        'alpine'     => 'sudo apk add mariadb mariadb-client',
+    );
+
+    return ($distro, $commands{$distro} // "");
+}
+
+sub print_missing_tools {
+    my @missing;
+    push @missing, "server (mysqld/mariadbd)" unless $MYSQLD;
+    push @missing, "client (mysql/mariadb)" unless $MYSQL;
+    push @missing, "admin (mysqladmin/mariadb-admin)" unless $MYSQLADMIN;
+    push @missing, "dump (mysqldump/mariadb-dump)" unless $MYSQLDUMP;
+    return @missing;
+}
+
+sub detect_mysql {
+    detect_mysql_system();
+
+    unless ($MYSQLD && $MYSQL && $MYSQLADMIN && $MYSQLDUMP) {
+        my @missing = print_missing_tools();
+        my ($distro, $install_cmd) = get_install_cmd();
+
+        print "MySQL/MariaDB tools not found.\n";
+        print "Missing: " . join(", ", @missing) . "\n";
+        print "Detected distro: $distro\n\n";
+
+        if ($install_cmd) {
+            print "Install MariaDB? [y/N]\n> ";
+            chomp(my $ans = <STDIN> // "");
+
+            if ($ans =~ /^[yY]$/) {
+                print "Installing MariaDB...\n";
+                run_cmd($install_cmd) or die "Installation failed\n";
+                detect_mysql_system();
+            } else {
+                die "Cannot continue without MySQL/MariaDB.\n";
+            }
+        } else {
+            print "Unknown distro - please install MariaDB manually:\n";
+            print "  - Debian/Ubuntu: sudo apt install mariadb-server mariadb-client\n";
+            print "  - Fedora/RHEL:   sudo dnf install mariadb-server mariadb\n";
+            print "  - Arch:          sudo pacman -S mariadb\n";
+            print "  - Alpine:        sudo apk add mariadb mariadb-client\n";
+            die "Cannot continue without MySQL/MariaDB.\n";
+        }
+    }
+
+    # Check again after installation
+    unless ($MYSQLD && $MYSQL && $MYSQLADMIN && $MYSQLDUMP) {
+        my @missing = print_missing_tools();
+        print "\nStill missing after installation: " . join(", ", @missing) . "\n";
+        print "Found:\n";
+        print "  Server:    " . ($MYSQLD     || "(not found)") . "\n";
+        print "  Client:    " . ($MYSQL      || "(not found)") . "\n";
+        print "  Admin:     " . ($MYSQLADMIN || "(not found)") . "\n";
+        print "  Dump:      " . ($MYSQLDUMP  || "(not found)") . "\n";
+        die "Please check your MariaDB/MySQL installation.\n";
+    }
+}
+
+sub check_deps {
+    # No external deps needed - runs mysqld directly
+}
+
+sub project_exists {
+    my ($name) = @_;
+    return -d "$BASE/$name";
+}
+
+sub assign_port {
+    opendir(my $dh, $BASE) or return $PORT_BASE;
+    my $count = 0;
+    while (my $e = readdir($dh)) {
+        next if $e =~ /^\./;
+        next if $e eq 'bin' || $e eq 'backups';
+        $count++ if -d "$BASE/$e";
+    }
+    closedir $dh;
+    return $PORT_BASE + $count;
+}
+
+sub get_port {
+    my ($project) = @_;
+    my $cfg = "$BASE/$project/etc/my.cnf";
+    return "" unless -f $cfg;
+    open my $fh, '<', $cfg or return "";
+    while (<$fh>) {
+        if (/^port\s*=\s*(\d+)/) {
+            close $fh;
+            return $1;
+        }
+    }
+    close $fh;
+    return "";
+}
+
+sub is_running {
+    my ($project) = @_;
+    return -S "$BASE/$project/data/mysql.sock";
+}
+
+my $VERSION = "1.0.0";
+
+sub print_help {
+    print <<"EOF";
+$SCRIPT_NAME $VERSION - Local MySQL/MariaDB instance manager (no containers)
+
+Usage:
+  $SCRIPT_NAME add <project>       Create new database instance
+  $SCRIPT_NAME remove <project>    Delete instance and data
+  $SCRIPT_NAME start <project>     Start instance
+  $SCRIPT_NAME stop <project>      Stop instance
+  $SCRIPT_NAME list                List all instances
+  $SCRIPT_NAME info <project>      Show instance details
+  $SCRIPT_NAME port <project>      Show port number
+  $SCRIPT_NAME logs <project>      Show recent logs
+  $SCRIPT_NAME backup <project>    Backup database
+  $SCRIPT_NAME restore <project> <file.sql>
+  $SCRIPT_NAME clone <src> <dst>   Clone instance
+  $SCRIPT_NAME status <project>    Quick status check
+  $SCRIPT_NAME debug               Show detected binaries and paths
+  $SCRIPT_NAME help                Show this help
+  $SCRIPT_NAME --version           Show version
+EOF
+}
+
+sub cmd_debug {
+    my ($distro, $install_cmd) = get_install_cmd();
+    print "=== $SCRIPT_NAME debug info ===\n\n";
+    print "Version:     $VERSION\n";
+    print "Distro:      $distro\n";
+    print "Base dir:    $BASE\n";
+    print "Backups dir: $BACKUPS\n";
+    print "DB Type:     " . ($IS_MARIADB ? "MariaDB" : "MySQL") . "\n\n";
+    print "Detected binaries:\n";
+    print "  Server:    " . ($MYSQLD          || "(not found)") . "\n";
+    print "  Client:    " . ($MYSQL           || "(not found)") . "\n";
+    print "  Admin:     " . ($MYSQLADMIN      || "(not found)") . "\n";
+    print "  Dump:      " . ($MYSQLDUMP       || "(not found)") . "\n";
+    print "  InstallDB: " . ($MYSQL_INSTALL_DB || "(not found)") . "\n\n";
+
+    if ($MYSQLD) {
+        print "Server version:\n  ";
+        system("'$MYSQLD' --version 2>/dev/null || echo '(could not get version)'");
+    }
+}
+sub cmd_add {
+    my ($project) = @_;
+    die "Usage: $SCRIPT_NAME add <project>\n" unless $project;
+    die "Project '$project' already exists.\n" if project_exists($project);
+
+    my $dir  = "$BASE/$project";
+    my $port = assign_port();
+
+    make_path("$dir/data", "$dir/etc", "$dir/logs", "$dir/scripts");
+
+    open my $cfg, '>', "$dir/etc/my.cnf" or die $!;
+    print $cfg <<"EOF";
+# Config compatible with MySQL 5.7+, 8.0+ and MariaDB 10.x, 11.x
+[mysqld]
+datadir=$dir/data
+socket=$dir/data/mysql.sock
+pid-file=$dir/data/mysql.pid
+port=$port
+bind-address=127.0.0.1
+log-error=$dir/logs/error.log
+
+# Disable binary logging (not needed for local dev)
+skip-log-bin
+
+# Performance settings for local dev
+innodb_buffer_pool_size=64M
+innodb_log_file_size=16M
+max_connections=20
+
+# Disable strict mode for easier development
+sql_mode=NO_ENGINE_SUBSTITUTION
+EOF
+    close $cfg;
+
+    open my $start, '>', "$dir/scripts/start" or die $!;
+    print $start <<"EOF";
+#!/bin/sh
+exec $MYSQLD --defaults-file=$dir/etc/my.cnf --user=\$(whoami)
+EOF
+    close $start;
+    chmod 0755, "$dir/scripts/start";
+
+    open my $stop, '>', "$dir/scripts/stop" or die $!;
+    print $stop <<"EOF";
+#!/bin/sh
+$MYSQLADMIN --socket=$dir/data/mysql.sock -u root shutdown 2>/dev/null || kill \$(cat $dir/data/mysql.pid 2>/dev/null) 2>/dev/null
+EOF
+    close $stop;
+    chmod 0755, "$dir/scripts/stop";
+
+    print "Initializing database...\n";
+    my $init_ok = 0;
+
+    # Try multiple initialization methods in order of preference
+    my @init_methods = ();
+
+    if ($IS_MARIADB) {
+        # MariaDB: prefer mariadb-install-db, fallback to mysql_install_db
+        push @init_methods, ["$MYSQL_INSTALL_DB --datadir='$dir/data' --auth-root-authentication-method=normal", "mariadb-install-db"] if $MYSQL_INSTALL_DB;
+        push @init_methods, ["$MYSQLD --initialize-insecure --datadir='$dir/data'", "mysqld --initialize-insecure (fallback)"];
+    } else {
+        # MySQL: prefer --initialize-insecure, fallback to mysql_install_db
+        push @init_methods, ["$MYSQLD --initialize-insecure --datadir='$dir/data' --user=\$(whoami)", "mysqld --initialize-insecure"];
+        push @init_methods, ["$MYSQL_INSTALL_DB --datadir='$dir/data'", "mysql_install_db (fallback)"] if $MYSQL_INSTALL_DB;
+    }
+
+    for my $method (@init_methods) {
+        my ($cmd, $desc) = @$method;
+        print "  Trying: $desc\n";
+        if (run_cmd("$cmd 2>&1")) {
+            $init_ok = 1;
+            last;
+        }
+    }
+
+    unless ($init_ok) {
+        print "\nAll initialization methods failed.\n";
+        print "Check $dir/logs/error.log for details.\n";
+        die "Database initialization failed\n";
+    }
+
+    print "Starting instance...\n";
+    system("$dir/scripts/start &");
+
+    # Wait for socket
+    my $tries = 0;
+    while (!-S "$dir/data/mysql.sock" && $tries < 30) {
+        sleep 1;
+        $tries++;
+    }
+    die "Timeout waiting for MySQL to start\n" unless -S "$dir/data/mysql.sock";
+
+    # SQL compatible with both MySQL and MariaDB
+    my $sql = <<"EOF";
+-- Create database
+CREATE DATABASE IF NOT EXISTS \`$project\`;
+
+-- Create user (compatible syntax for MySQL 5.7+, 8.0+ and MariaDB 10.x, 11.x)
+CREATE USER IF NOT EXISTS '$project'\@'localhost' IDENTIFIED BY '$MYSQL_PASS';
+CREATE USER IF NOT EXISTS '$project'\@'127.0.0.1' IDENTIFIED BY '$MYSQL_PASS';
+
+-- Grant privileges
+GRANT ALL PRIVILEGES ON \`$project\`.* TO '$project'\@'localhost';
+GRANT ALL PRIVILEGES ON \`$project\`.* TO '$project'\@'127.0.0.1';
+FLUSH PRIVILEGES;
+EOF
+
+    print "Setting up database and user...\n";
+    my $sql_ok = open my $pipe, "|-", "$MYSQL --socket='$dir/data/mysql.sock' -u root 2>&1";
+    if ($sql_ok) {
+        print $pipe $sql;
+        close $pipe;
+        $sql_ok = ($? == 0);
+    }
+
+    unless ($sql_ok) {
+        print "Warning: Could not create database/user. You may need to do this manually.\n";
+    }
+
+    system("$dir/scripts/stop");
+    sleep 2;
+
+    print "\n";
+    print "Project: $project\n";
+    print "User:    $project\n";
+    print "Pass:    $MYSQL_PASS\n";
+    print "Port:    $port\n";
+    print "Socket:  $dir/data/mysql.sock\n";
+    print "\nConnect: mysql -u $project -p -S $dir/data/mysql.sock\n";
+}
+
+sub cmd_remove {
+    my ($project) = @_;
+    die "Usage: $SCRIPT_NAME remove <project>\n" unless $project;
+    die "Project '$project' does not exist.\n" unless project_exists($project);
+
+    print "Remove '$project'? [y/N] ";
+    chomp(my $ans = <STDIN> // "");
+    if ($ans =~ /^[yY]$/) {
+        remove_tree("$BASE/$project");
+        print "Removed.\n";
+    } else {
+        print "Cancelled.\n";
+    }
+}
+
+sub cmd_start {
+    my ($project) = @_;
+    die "Usage: $SCRIPT_NAME start <project>\n" unless $project;
+    die "Project '$project' does not exist.\n" unless project_exists($project);
+
+    if (is_running($project)) {
+        print "Already running.\n";
+        return;
+    }
+
+    my $dir = "$BASE/$project";
+    print "Starting $project...\n";
+    system("$dir/scripts/start &");
+
+    # Wait for socket
+    my $tries = 0;
+    while (!-S "$dir/data/mysql.sock" && $tries < 30) {
+        sleep 1;
+        $tries++;
+    }
+
+    if (-S "$dir/data/mysql.sock") {
+        my $port = get_port($project);
+        print "Running on port $port\n";
+    } else {
+        print "Warning: Socket not found after 30s, check logs\n";
+    }
+}
+
+sub cmd_stop {
+    my ($project) = @_;
+    die "Usage: $SCRIPT_NAME stop <project>\n" unless $project;
+    die "Project '$project' does not exist.\n" unless project_exists($project);
+
+    unless (is_running($project)) {
+        print "Not running.\n";
+        return;
+    }
+
+    my $dir = "$BASE/$project";
+    print "Stopping $project...\n";
+    system("$dir/scripts/stop");
+    sleep 2;
+    print "Stopped.\n";
+}
+
+sub cmd_list {
+    print "Instances in $BASE:\n";
+    opendir(my $dh, $BASE) or die $!;
+    my @entries = readdir($dh);
+    closedir $dh;
+
+    my $found = 0;
+    for my $e (@entries) {
+        next if $e =~ /^\./;
+        next if $e eq 'bin' || $e eq 'backups';
+        my $path = "$BASE/$e";
+        next unless -d $path;
+        $found = 1;
+        my $port   = get_port($e) || "-";
+        my $status = is_running($e) ? "running" : "stopped";
+        print "  $e  (port: $port, $status)\n";
+    }
+    print "  (none)\n" unless $found;
+}
+sub cmd_info {
+    my ($project) = @_;
+    die "Usage: $SCRIPT_NAME info <project>\n" unless $project;
+    die "Project '$project' does not exist.\n" unless project_exists($project);
+
+    my $dir    = "$BASE/$project";
+    my $port   = get_port($project) || "-";
+    my $status = is_running($project) ? "running" : "stopped";
+    my $size   = `du -sh '$dir/data' 2>/dev/null`;
+    $size =~ s/\s.*$// if $size;
+
+    print "Project:   $project\n";
+    print "Base dir:  $dir\n";
+    print "Data dir:  $dir/data\n";
+    print "Config:    $dir/etc/my.cnf\n";
+    print "Logs:      $dir/logs/error.log\n";
+    print "Port:      $port\n";
+    print "Status:    $status\n";
+    print "DB name:   $project\n";
+    print "DB user:   $project\n";
+    print "DB pass:   $MYSQL_PASS\n";
+    print "Data size: " . ($size || "-") . "\n";
+}
+
+sub cmd_port {
+    my ($project) = @_;
+    die "Usage: $SCRIPT_NAME port <project>\n" unless $project;
+    die "Project '$project' does not exist.\n" unless project_exists($project);
+    my $port = get_port($project) || "";
+    print "$port\n";
+}
+
+sub cmd_logs {
+    my ($project) = @_;
+    die "Usage: $SCRIPT_NAME logs <project>\n" unless $project;
+    die "Project '$project' does not exist.\n" unless project_exists($project);
+    my $log = "$BASE/$project/logs/error.log";
+    unless (-f $log) {
+        print "No log file at $log\n";
+        return;
+    }
+    system("tail -n 100 '$log'");
+}
+
+sub ensure_running_for_op {
+    my ($project) = @_;
+    my $dir = "$BASE/$project";
+    if (!is_running($project)) {
+        print "Instance '$project' not running. Starting temporarily...\n";
+        system("$dir/scripts/start &");
+        my $tries = 0;
+        while (!-S "$dir/data/mysql.sock" && $tries < 30) {
+            sleep 1;
+            $tries++;
+        }
+        die "Timeout waiting for MySQL\n" unless -S "$dir/data/mysql.sock";
+        return 1;
+    }
+    return 0;
+}
+
+sub cmd_backup {
+    my ($project) = @_;
+    die "Usage: $SCRIPT_NAME backup <project>\n" unless $project;
+    die "Project '$project' does not exist.\n" unless project_exists($project);
+
+    my $dir          = "$BASE/$project";
+    my $temp_started = ensure_running_for_op($project);
+
+    my $ts  = strftime("%Y%m%d-%H%M%S", localtime);
+    my $out = "$BACKUPS/${project}-$ts.sql";
+
+    print "Creating backup: $out\n";
+    my $cmd = "'$MYSQLDUMP' --socket='$dir/data/mysql.sock' -u root '$project' > '$out'";
+    run_cmd($cmd) or die "Backup failed\n";
+
+    if ($temp_started) {
+        system("$dir/scripts/stop");
+    }
+
+    print "Backup created: $out\n";
+}
+
+sub cmd_restore {
+    my ($project, $file) = @_;
+    die "Usage: $SCRIPT_NAME restore <project> <file.sql>\n" unless $project && $file;
+    die "Project '$project' does not exist.\n" unless project_exists($project);
+    die "File '$file' does not exist.\n" unless -f $file;
+
+    my $dir          = "$BASE/$project";
+    my $temp_started = ensure_running_for_op($project);
+
+    print "Restoring $file into $project...\n";
+    my $cmd = "'$MYSQL' --socket='$dir/data/mysql.sock' -u root '$project' < '$file'";
+    run_cmd($cmd) or die "Restore failed\n";
+
+    if ($temp_started) {
+        system("$dir/scripts/stop");
+    }
+
+    print "Restore completed.\n";
+}
+
+sub cmd_clone {
+    my ($src, $dst) = @_;
+    die "Usage: $SCRIPT_NAME clone <src> <dst>\n" unless $src && $dst;
+    die "Source '$src' does not exist.\n"   unless project_exists($src);
+    die "Destination '$dst' exists.\n"      if project_exists($dst);
+
+    print "Cloning $src -> $dst\n";
+
+    cmd_add($dst);
+
+    my $src_dir = "$BASE/$src";
+    my $dst_dir = "$BASE/$dst";
+
+    my $src_temp_started = ensure_running_for_op($src);
+
+    my $ts         = strftime("%Y%m%d-%H%M%S", localtime);
+    my $tmp_backup = "$BACKUPS/${src}-clone-$ts.sql";
+
+    print "Creating temporary backup from $src...\n";
+    my $dump_cmd = "'$MYSQLDUMP' --socket='$src_dir/data/mysql.sock' -u root '$src' > '$tmp_backup'";
+    run_cmd($dump_cmd) or die "Clone backup failed\n";
+
+    if ($src_temp_started) {
+        system("$src_dir/scripts/stop");
+    }
+
+    print "Restoring into $dst...\n";
+    my $dst_temp_started = ensure_running_for_op($dst);
+    my $restore_cmd      = "'$MYSQL' --socket='$dst_dir/data/mysql.sock' -u root '$dst' < '$tmp_backup'";
+    run_cmd($restore_cmd) or die "Clone restore failed\n";
+
+    if ($dst_temp_started) {
+        system("$dst_dir/scripts/stop");
+    }
+
+    print "Clone completed: $src -> $dst\n";
+}
+
+sub cmd_status {
+    my ($project) = @_;
+    die "Usage: $SCRIPT_NAME status <project>\n" unless $project;
+    die "Project '$project' does not exist.\n" unless project_exists($project);
+
+    my $dir    = "$BASE/$project";
+    my $port   = get_port($project) || "-";
+    my $sock   = "$dir/data/mysql.sock";
+    my $log    = "$dir/logs/error.log";
+    my $running = is_running($project) ? 1 : 0;
+
+    print "Project: $project\n";
+    print "Port:    $port\n";
+    print "Socket:  " . (-S $sock ? "present" : "missing") . "\n";
+    print "Status:  " . ($running ? "running" : "stopped") . "\n";
+
+    if (-f $log) {
+        my $last = `tail -n 1 '$log'`;
+        chomp $last;
+        print "Last log: $last\n" if $last ne "";
+    }
+}
+
+
+my %commands = (
+    add     => \&cmd_add,
+    remove  => \&cmd_remove,
+    start   => \&cmd_start,
+    stop    => \&cmd_stop,
+    list    => \&cmd_list,
+    info    => \&cmd_info,
+    port    => \&cmd_port,
+    logs    => \&cmd_logs,
+    backup  => \&cmd_backup,
+    restore => \&cmd_restore,
+    clone   => \&cmd_clone,
+    status  => \&cmd_status,
+    debug   => \&cmd_debug,
+    help    => \&print_help,
+);
+
+my $cmd = shift @ARGV // "help";
+
+# Handle --version early
+if ($cmd eq '--version' || $cmd eq '-v') {
+    print "$SCRIPT_NAME $VERSION\n";
+    exit 0;
+}
+
+# Handle help early (before mysql detection)
+if ($cmd eq 'help' || $cmd eq '--help' || $cmd eq '-h') {
+    ensure_dirs();
+    print_help();
+    exit 0;
+}
+
+ensure_dirs();
+check_deps();
+detect_mysql();
+
+if (exists $commands{$cmd}) {
+    $commands{$cmd}->(@ARGV);
+} else {
+    print "Unknown command: $cmd\n";
+    print_help();
+    exit 1;
+}
