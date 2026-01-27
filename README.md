@@ -16,10 +16,19 @@ Local MySQL/MariaDB instance manager for development. No containers, no systemd 
 
 ## Requirements
 
-- Perl 5 (pre-installed on most Linux distros)
+- Perl 5 (pre-installed on most systems)
 - MariaDB or MySQL (auto-installed if missing)
 
 ## Installation
+
+### macOS (Homebrew)
+
+```bash
+brew tap lucianofedericopereira/sqltool
+brew install sqltool
+```
+
+### Linux
 
 ```bash
 git clone https://github.com/lucianofedericopereira/sqltool.git
@@ -111,17 +120,18 @@ All data is stored in `~/sql/`:
 └── backups/           # SQL backups
 ```
 
-## Supported Distros
+## Supported Systems
 
 Auto-detection and installation works on:
 
+- **macOS**: via Homebrew (Apple Silicon and Intel)
 - **Debian/Ubuntu** family: Debian, Ubuntu, Linux Mint, Pop!_OS, elementary OS
 - **Red Hat** family: Fedora, RHEL, CentOS, Rocky Linux, AlmaLinux
 - **Arch** family: Arch Linux, Manjaro
 - **SUSE** family: openSUSE, SUSE
 - **Others**: Void Linux, Alpine Linux
 
-For other distros, install MariaDB manually first.
+For other systems, install MariaDB manually first.
 
 ## Why Perl?
 

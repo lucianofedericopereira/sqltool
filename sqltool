@@ -60,6 +60,17 @@ sub find_binary {
         '/opt/mariadb/bin',
     );
 
+    # Add macOS Homebrew paths
+    if ($^O eq 'darwin') {
+        unshift @search_dirs, (
+            '/opt/homebrew/bin',                    # Homebrew on Apple Silicon
+            '/opt/homebrew/opt/mariadb/bin',        # MariaDB via Homebrew (Apple Silicon)
+            '/opt/homebrew/opt/mysql/bin',          # MySQL via Homebrew (Apple Silicon)
+            '/usr/local/opt/mariadb/bin',           # MariaDB via Homebrew (Intel)
+            '/usr/local/opt/mysql/bin',             # MySQL via Homebrew (Intel)
+        );
+    }
+
     for my $name (@names) {
         # Check PATH first using command -v (more portable than which)
         my $path = `command -v $name 2>/dev/null`;
@@ -104,6 +115,12 @@ sub detect_mysql_system {
 }
 
 sub detect_distro {
+    # Check for macOS first
+    if ($^O eq 'darwin') {
+        return "macos";
+    }
+
+    # Linux: read /etc/os-release
     if (-f "/etc/os-release") {
         open my $fh, '<', "/etc/os-release" or return "unknown";
         while (<$fh>) {
@@ -139,6 +156,7 @@ sub get_install_cmd {
         'suse'       => 'sudo zypper install -y mariadb mariadb-client',
         'void'       => 'sudo xbps-install -y mariadb',
         'alpine'     => 'sudo apk add mariadb mariadb-client',
+        'macos'      => 'brew install mariadb',
     );
 
     return ($distro, $commands{$distro} // "");
@@ -177,6 +195,7 @@ sub detect_mysql {
             }
         } else {
             print "Unknown distro - please install MariaDB manually:\n";
+            print "  - macOS:         brew install mariadb\n";
             print "  - Debian/Ubuntu: sudo apt install mariadb-server mariadb-client\n";
             print "  - Fedora/RHEL:   sudo dnf install mariadb-server mariadb\n";
             print "  - Arch:          sudo pacman -S mariadb\n";
@@ -266,8 +285,10 @@ EOF
 
 sub cmd_debug {
     my ($distro, $install_cmd) = get_install_cmd();
+    my $os_type = ($^O eq 'darwin') ? "macOS" : "Linux";
     print "=== $SCRIPT_NAME debug info ===\n\n";
     print "Version:     $VERSION\n";
+    print "OS:          $os_type\n";
     print "Distro:      $distro\n";
     print "Base dir:    $BASE\n";
     print "Backups dir: $BACKUPS\n";
