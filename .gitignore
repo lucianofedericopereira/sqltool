@@ -1,0 +1,31 @@
+# Perl/CPAN build artifacts
+Makefile
+Makefile.old
+blib/
+pm_to_blib
+MYMETA.json
+MYMETA.yml
+MANIFEST
+MANIFEST.bak
+App-sqltool-*/
+App-sqltool-*.tar.gz
+
+# Editor files
+*~
+*.swp
+*.swo
+\#*\#
+.\#*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE directories
+.idea/
+.vscode/
+*.iml
+
+# Test artifacts
+.prove
+cover_db/

@@ -1,0 +1,10 @@
+Revision history for App-sqltool
+
+1.0.0   2026-01-28
+        - Initial CPAN release
+        - Support for MySQL 5.7+, 8.0+ and MariaDB 10.x, 11.x
+        - Commands: add, remove, start, stop, list, info, port, logs,
+          backup, restore, clone, status, debug, help
+        - Auto-detection of MySQL/MariaDB binaries
+        - Auto-install support for Debian, Ubuntu, Fedora, Arch, macOS, and more
+        - Cross-platform support (Linux, macOS)

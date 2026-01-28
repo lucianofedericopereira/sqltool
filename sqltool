@@ -258,7 +258,7 @@ sub is_running {
     return -S "$BASE/$project/data/mysql.sock";
 }
 
-my $VERSION = "1.0.0";
+our $VERSION = '1.0.0';
 
 sub print_help {
     print <<"EOF";
@@ -724,3 +724,206 @@ if (exists $commands{$cmd}) {
     print_help();
     exit 1;
 }
+
+__END__
+
+=head1 NAME
+
+sqltool - Local MySQL/MariaDB instance manager for development
+
+=head1 VERSION
+
+Version 1.0.0
+
+=head1 SYNOPSIS
+
+    sqltool add <project>              # Create new database instance
+    sqltool remove <project>           # Delete instance and data
+    sqltool start <project>            # Start instance
+    sqltool stop <project>             # Stop instance
+    sqltool list                       # List all instances
+    sqltool info <project>             # Show instance details
+    sqltool port <project>             # Show port number
+    sqltool logs <project>             # Show recent logs
+    sqltool backup <project>           # Backup database
+    sqltool restore <project> <file>   # Restore from backup
+    sqltool clone <src> <dst>          # Clone instance
+    sqltool status <project>           # Quick status check
+    sqltool debug                      # Show detected binaries
+    sqltool help                       # Show help
+
+=head1 DESCRIPTION
+
+B<sqltool> is a local MySQL/MariaDB instance manager for development environments.
+It provides a simple, containerless approach to managing isolated database instances
+on a single developer's machine.
+
+Each project gets its own:
+
+=over 4
+
+=item * Data directory
+
+=item * Socket file
+
+=item * Port number
+
+=item * Log files
+
+=item * Configuration
+
+=back
+
+No root access, systemd, or containers required. Instances run as your user.
+
+=head1 COMMANDS
+
+=over 4
+
+=item B<add> I<project>
+
+Creates a new database instance. Initializes the data directory, creates a
+database and user with the project name, and sets up start/stop scripts.
+
+=item B<remove> I<project>
+
+Deletes an instance and all its data. Prompts for confirmation.
+
+=item B<start> I<project>
+
+Starts the database instance in the background.
+
+=item B<stop> I<project>
+
+Stops the running database instance.
+
+=item B<list>
+
+Lists all instances with their port numbers and status.
+
+=item B<info> I<project>
+
+Shows detailed information about an instance including paths, credentials,
+and data size.
+
+=item B<port> I<project>
+
+Outputs just the port number (useful for scripts).
+
+=item B<logs> I<project>
+
+Shows the last 100 lines of the error log.
+
+=item B<backup> I<project>
+
+Creates a timestamped SQL backup in ~/sql/backups/.
+
+=item B<restore> I<project> I<file.sql>
+
+Restores a backup file into the project database.
+
+=item B<clone> I<source> I<destination>
+
+Creates a new instance that's a copy of an existing one.
+
+=item B<status> I<project>
+
+Quick status check showing if instance is running.
+
+=item B<debug>
+
+Shows detected MySQL/MariaDB binaries and paths.
+
+=item B<help>
+
+Shows the help message.
+
+=back
+
+=head1 DIRECTORY STRUCTURE
+
+All data is stored under B<~/sql/>:
+
+    ~/sql/
+    ├── <project>/
+    │   ├── data/           # MySQL data files
+    │   │   └── mysql.sock  # Socket file
+    │   ├── etc/
+    │   │   └── my.cnf      # Configuration
+    │   ├── logs/
+    │   │   └── error.log   # Error log
+    │   └── scripts/
+    │       ├── start       # Start script
+    │       └── stop        # Stop script
+    ├── backups/            # SQL backups
+    └── bin/                # Reserved for future use
+
+=head1 DEFAULT CREDENTIALS
+
+=over 4
+
+=item * Database name: I<project name>
+
+=item * Username: I<project name>
+
+=item * Password: C<admin1234>
+
+=item * Port: Starting from 3307, incremented per instance
+
+=back
+
+=head1 REQUIREMENTS
+
+=over 4
+
+=item * Perl 5.10 or later
+
+=item * MySQL 5.7+ or MariaDB 10.x/11.x
+
+=back
+
+If MySQL/MariaDB is not installed, sqltool will offer to install it
+automatically on supported systems (Debian, Ubuntu, Fedora, Arch, macOS, etc.).
+
+=head1 EXAMPLES
+
+Create and start a new instance:
+
+    sqltool add myapp
+    sqltool start myapp
+
+Connect to it:
+
+    mysql -u myapp -p -S ~/sql/myapp/data/mysql.sock
+
+Or via TCP:
+
+    mysql -u myapp -p -h 127.0.0.1 -P $(sqltool port myapp)
+
+Backup and restore:
+
+    sqltool backup myapp
+    sqltool restore myapp ~/sql/backups/myapp-20240115-120000.sql
+
+Clone for testing:
+
+    sqltool clone production test_copy
+
+=head1 AUTHOR
+
+Luciano Federico Pereira E<lt>lucianopereira@posteo.esE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2026 Luciano Federico Pereira
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation; either version 2.1 of the License, or (at
+your option) any later version.
+
+=head1 SEE ALSO
+
+L<mysql(1)>, L<mysqld(1)>, L<mariadbd(1)>
+
+=cut

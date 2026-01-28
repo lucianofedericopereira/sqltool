@@ -1,0 +1,33 @@
+# Version control
+\.git/
+\.gitignore
+
+# Build artifacts
+^Makefile$
+^Makefile\.old$
+^blib/
+^pm_to_blib$
+^MYMETA\.json$
+^MYMETA\.yml$
+^App-sqltool-[\d.]+/
+^App-sqltool-[\d.]+\.tar\.gz$
+
+# Editor files
+~$
+\.swp$
+\.swo$
+\#.*\#$
+\.#
+
+# OS files
+\.DS_Store$
+Thumbs\.db$
+
+# Test/temp files
+^tryme\.sh$
+^\.prove$
+^cover_db/
+
+# IDE directories
+\.idea/
+\.vscode/
