@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="sqltool logo" width="400">
+  <img src="assets/logo.png" alt="sqltool logo">
 </p>
 
 # sqltool
@@ -16,31 +16,53 @@ Local MySQL/MariaDB instance manager for development. No containers, no systemd 
 
 ## Requirements
 
-- Perl 5 (pre-installed on most systems)
 - MariaDB or MySQL (auto-installed if missing)
+- **Perl version**: Perl 5 (pre-installed on most systems)
+- **Nim version**: Nim 1.6+ (to build from source)
 
 ## Installation
+
+### Build from source (Nim)
+
+Requires [Nim](https://nim-lang.org/install.html) 1.6 or later.
+
+```bash
+git clone https://github.com/lucianofedericopereira/sqltool.git
+cd sqltool
+make build         # native binary
+make strip         # strip debug symbols (~172KB)
+sudo make install  # install to /usr/local/bin
+```
+
+Or directly with the Nim compiler:
+
+```bash
+nim c -d:release --opt:size nsqltool.nim
+```
+
+#### Cross-compilation targets
+
+| Target | Command | Requirement |
+|--------|---------|-------------|
+| Linux x86_64 (static) | `make linux-static` | `musl-tools` |
+| Linux ARM64 | `make linux-arm64` | `gcc-aarch64-linux-gnu` |
+| macOS ARM64 | `make macos-arm64` | compile on macOS |
+| macOS x86_64 | `make macos-x86` | compile on macOS |
+
+### Perl version (no build step)
+
+```bash
+git clone https://github.com/lucianofedericopereira/sqltool.git
+cd sqltool
+chmod +x sqltool
+sudo cp sqltool /usr/local/bin/sqltool
+```
 
 ### macOS (Homebrew)
 
 ```bash
 brew tap lucianofedericopereira/sqltool
 brew install sqltool
-```
-
-### Linux
-
-```bash
-git clone https://github.com/lucianofedericopereira/sqltool.git
-cd sqltool
-chmod +x sqltool
-sudo cp sqltool /usr/local/bin/
-```
-
-Or just run it from anywhere:
-
-```bash
-./sqltool help
 ```
 
 ## Quick Demo
@@ -173,6 +195,173 @@ chmod +x sqltool
 That's it. Works on a fresh Debian install. Works on a minimal Alpine container. Works on your colleague's Fedora laptop. No `pyproject.toml`, no `package.json`, no build artifacts.
 
 For a CLI tool that manages system processes and files, Perl hits the sweet spot between shell scripts (too limited for complex logic) and heavier languages (unnecessary complexity for this use case).
+
+## Why Nim?
+
+sqltool also ships as a compiled Nim binary (~172KB stripped, no runtime dependencies). Nim is the right choice when you want a single distributable file that works without any interpreter on the target machine.
+
+- **Single binary** - copy and run, no Perl required on the target
+- **Same platforms** - Linux x86_64/ARM64, macOS ARM64/x86_64
+- **Identical behavior** - same commands, same directory layout, same output
+- **Cross-compilation** - build a Linux ARM64 binary from your x86 laptop
+
+### Nim for Perl developers
+
+If you know Perl, Nim will feel familiar in structure but different in discipline. Here's a quick reference:
+
+#### Variables and types
+
+```perl
+# Perl - dynamic, implicit types
+my $name = "myproject";
+my $port = 3307;
+my @dirs = ("/usr/bin", "/usr/local/bin");
+my %cmds = (add => \&cmd_add, list => \&cmd_list);
+```
+
+```nim
+# Nim - static types, inferred by compiler
+let name = "myproject"
+var port = 3307
+var dirs = @["/usr/bin", "/usr/local/bin"]
+var cmds = {"add": cmdAdd, "list": cmdList}.toTable()
+```
+
+#### String operations
+
+```perl
+my $path = $dir . "/" . $name;        # concatenation
+my $lower = lc($str);                 # lowercase
+$str =~ s/"//g;                       # regex replace
+my @parts = split(/=/, $line, 2);     # split
+```
+
+```nim
+let path = dir / name                 # os path join
+let lower = str.toLowerAscii()        # lowercase
+let clean = str.replace("\"", "")    # string replace
+let parts = line.split("=", 2)        # split
+```
+
+#### String interpolation
+
+```perl
+print "Project: $project\n";
+print "Port:    $port\n";
+
+# heredoc
+my $cfg = <<"EOF";
+datadir=$dir/data
+port=$port
+EOF
+```
+
+```nim
+echo "Project: " & project
+echo "Port:    " & $port
+
+# fmt strings (import strformat)
+let cfg = fmt"""
+datadir={dir}/data
+port={port}
+"""
+```
+
+#### File and directory operations
+
+```perl
+use File::Path qw(make_path remove_tree);
+make_path("$dir/data");               # mkdir -p
+remove_tree("$BASE/$project");        # rm -rf
+-d $path                              # is directory?
+-f $path                              # file exists?
+-x $path                              # is executable?
+-S $path                              # is socket?
+open my $fh, '<', $file or die $!;
+while (<$fh>) { ... }
+close $fh;
+```
+
+```nim
+import os, posix
+createDir(dir / "data")               # mkdir -p
+removeDir(BASE / project)             # rm -rf
+dirExists(path)                       # is directory?
+fileExists(path)                      # file exists?
+fileExists(path)                      # (check permissions separately)
+isSocket(path)                        # is socket? (via posix.stat)
+for line in lines(file):              # read lines
+  discard
+```
+
+#### Running external commands
+
+```perl
+system("mysqld --defaults-file=$cfg");     # run, wait
+system("mysqld --defaults-file=$cfg &");   # run in background
+my $out = `mysqld --version 2>/dev/null`;  # capture output
+open my $pipe, "|-", "mysql -u root";      # pipe to process
+print $pipe $sql;
+close $pipe;
+```
+
+```nim
+import osproc
+discard execCmd("mysqld --defaults-file=" & cfg)      # run, wait
+discard execCmd("mysqld --defaults-file=" & cfg & " &") # background
+let (out, _) = execCmdEx("mysqld --version 2>/dev/null") # capture
+let p = startProcess("mysql -u root",                 # pipe to process
+                     options={poUsePath, poEvalCommand})
+p.inputStream.write(sql)
+p.inputStream.close()
+discard p.waitForExit()
+p.close()
+```
+
+#### Subroutines / procs
+
+```perl
+sub find_binary {
+    my (@names) = @_;
+    for my $name (@names) {
+        return $name if -x "/usr/bin/$name";
+    }
+    return "";
+}
+```
+
+```nim
+proc findBinary(names: seq[string]): string =
+  for name in names:
+    if fileExists("/usr/bin/" & name):
+      return name
+  ""
+```
+
+#### Error handling
+
+```perl
+die "Project '$project' already exists.\n" if project_exists($project);
+open my $fh, '>', $file or die $!;
+```
+
+```nim
+if projectExists(project):
+  quit("Project '" & project & "' already exists.\n", 1)
+writeFile(file, content)   # raises IOError on failure
+```
+
+#### OS/platform detection
+
+```perl
+if ($^O eq 'darwin') { ... }   # runtime
+```
+
+```nim
+when defined(macosx): ...      # compile-time (when, not if)
+```
+
+The biggest shift from Perl to Nim is that Nim resolves platform differences **at compile time** with `when`, whereas Perl checks `$^O` at runtime. Everything else maps closely: procs instead of subs, `seq[string]` instead of arrays, `table` instead of hashes, and `fmt` instead of heredoc interpolation.
 
 ## Default Credentials
 

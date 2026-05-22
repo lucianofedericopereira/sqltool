@@ -2,15 +2,17 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 
+my $name = 'sqltool';
+
 WriteMakefile(
-    NAME             => 'App::sqltool',
-    VERSION_FROM     => 'sqltool',
+    NAME             => "App::$name",
+    VERSION_FROM     => $name,
     ABSTRACT         => 'Local MySQL/MariaDB instance manager for development',
     AUTHOR           => 'Luciano Federico Pereira <lucianopereira@posteo.es>',
     LICENSE          => 'lgpl_2_1',
     MIN_PERL_VERSION => '5.010',
 
-    EXE_FILES        => ['sqltool'],
+    EXE_FILES        => [$name],
 
     PREREQ_PM        => {
         # Core modules only - no external dependencies

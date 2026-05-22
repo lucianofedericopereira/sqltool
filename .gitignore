@@ -1,5 +1,4 @@
 # Perl/CPAN build artifacts
-Makefile
 Makefile.old
 blib/
 pm_to_blib
@@ -9,6 +8,13 @@ MANIFEST
 MANIFEST.bak
 App-sqltool-*/
 App-sqltool-*.tar.gz
+
+# Nim build artifacts
+nimcache/
+sqltool
+sqltool-arm64
+sqltool-macos-arm64
+sqltool-macos-x86
 
 # Editor files
 *~
